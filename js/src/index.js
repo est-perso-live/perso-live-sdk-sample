@@ -44,8 +44,8 @@ function onSessionClicked() {
         startSession();
 
         applySessionState(1);
-    } else { // this.sessionState == 1
-        // do nothing
+    } else if (this.sessionState == 2) {
+        stopSession();
     }
 }
 
@@ -78,7 +78,7 @@ async function getConfig() {
     config.ttsTypes.forEach((value, index) => {
         const option = document.createElement("option");
         option.value = index;
-        option.innerText = `${value.service}-${value.speaker}`;
+        option.innerText = value.name;
         ttsOptions.appendChild(option);
     });
 
@@ -211,6 +211,8 @@ async function startSession() {
                 if (useIntro && promptOption.intro_message.trim().length > 0) {
                     session.intro();
                 }
+
+                applySessionState(2);
             } else {
                 if (status.code === 408) {
                     alert("Timeout.");
@@ -220,6 +222,10 @@ async function startSession() {
             }
         }
     });
+}
+
+function stopSession() {
+    session.stopSession();
 }
 
 function applySessionState(sessionState) {
@@ -234,6 +240,11 @@ function applySessionState(sessionState) {
         }
         case 1: {
             sessionButton.disabled = true;
+            break;
+        }
+        case 2: {
+            sessionButton.disabled = false;
+            sessionButton.innerText = "STOP";
             break;
         }
     }
