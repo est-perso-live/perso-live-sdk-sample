@@ -6,7 +6,9 @@ export const config = {
 	tts: '',
 	modelStyle: '',
 	prompt: '',
-	document: ''
+	document: '',
+	backgroundImage: '',
+	introMessage: ''
 }
 // ex
 /*
@@ -16,15 +18,18 @@ export const config = {
 	tts: allConfig.ttss[0].name,
 	modelStyle: allConfig.modelStyles[0].name,
 	prompt: allConfig.prompts[0].prompt_id,
-	document: allConfig.documents[0].document_id
+	document: allConfig.documents.length > 0 ? allConfig.documents[0].document_id : null,
+	backgroundImage: allConfig.backgroundImages.length > 0 ? allConfig.backgroundImages[0].backgroundimage_id : null,
+	introMessage: allConfig.prompts[0].intro_message
 }
 */
 
 async function getAllConfig() {
-	let llms, ttss, modelStyles, prompts, documents;
+	let llms, ttss, modelStyles, backgroundImages, prompts, documents;
 	llms = await getLLMs(persoLiveApiServerUrl, persoLiveApiKey);
 	ttss = await getTTSs(persoLiveApiServerUrl, persoLiveApiKey);
 	modelStyles = await getModelStyles(persoLiveApiServerUrl, persoLiveApiKey);
+	backgroundImages = await getBackgroundImages(persoLiveApiServerUrl, persoLiveApiKey);
 	prompts = await getPrompts(persoLiveApiServerUrl, persoLiveApiKey);
 	documents = await getDocuments(persoLiveApiServerUrl, persoLiveApiKey);
 
@@ -33,7 +38,8 @@ async function getAllConfig() {
 		ttss,
 		modelStyles,
 		prompts,
-		documents
+		documents,
+		backgroundImages
 	}
 }
 
@@ -113,6 +119,34 @@ async function getModelStyles(apiServer: string, apiKey: string) {
 	)
 	const modelStyleResponse = await modelStylePromise;
 	return await modelStyleResponse.json();
+}
+
+
+/**
+ * @param apiServer Perso Live API Server
+ * @param apiKey Perso Live API Key
+ * @returns JSON
+ * [
+ *   {
+ *     "backgroundimage_id": string,
+ *     "title": string,
+ *     "image": string
+ *     "created_at": string // ex) "2024-05-02T09:05:55.395Z"
+ *   }
+ * ]
+ */
+async function getBackgroundImages(apiServer: string, apiKey: string) {
+	const backgroundImagesPromise = fetch(
+		`${apiServer}/api/v1/background_image/`,
+		{
+			headers: {
+				'PersoLive-APIKey': apiKey
+			},
+			method: 'GET'
+		}
+	)
+	const backgroundImagesResponse = await backgroundImagesPromise;
+	return await backgroundImagesResponse.json();
 }
 
 /**

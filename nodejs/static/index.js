@@ -1,4 +1,3 @@
-var apiServer = null;
 var session = null;
 var config = null;
 var recording = false;
@@ -7,6 +6,80 @@ var sessionState = 0; // 0: Initial state(or closed) 1: starting 2: started
 var unsubscribeSessionStatus = null;
 var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
+var recorder = null;
+
+function onSessionClicked() {
+    if (this.sessionState == 0) {
+        startSession();
+
+        applySessionState(1);
+    } else if (this.sessionState == 2) { // this.sessionState == 1
+        stopSession();
+    }
+}
+
+function onVideoClicked() {
+    stopSpeech();
+}
+
+function onVoiceChatClicked() {
+    var voiceChatButton = document.getElementById("voice");
+    if (voiceChatButton.disabled) {
+        return;
+    }
+
+    if (canRecord()) {
+        session.startVoiceChat();
+        recording = true;
+    } else {
+        session.stopVoiceChat();
+        recording = false;
+    }
+}
+
+function onRecordVoiceClicked() {
+    if (canRecord()) {
+        startVoiceRecording();
+        recording = true;
+    } else {
+        stopVoiceRecording();
+        recording = false;
+    }
+}
+
+function onMessageSubmit() {
+    var messageElement = document.getElementById("message");
+    var message = messageElement.value.trim();
+    if (message.length > 0) {
+        messageElement.value = "";
+        session.processChat(message);
+    }
+}
+
+function onMessageKeyPress(keyEvent) {
+    if (keyEvent.key == 'Enter') {
+        onMessageSubmit();
+    }
+}
+
+function onTtfMessageSubmit() {
+    var messageElement = document.getElementById("ttfMessage");
+    var message = messageElement.value.trim();
+    if (message.length > 0) {
+        messageElement.value = "";
+        session.processTTSTF(message);
+    }
+}
+
+function stopSession() {
+    session.stopSession();
+}
+
+function stopSpeech() {
+    if (chatState == 3) {
+        session.clearBuffer();
+    }
+}
 
 function refreshChatLog(chatList) {
     var chatLog = document.getElementById("chatLog");
@@ -38,11 +111,31 @@ function refreshChatLog(chatList) {
     });
 }
 
-function onVideoClicked() {
-    stopSpeech();
+function startVoiceRecording() {
+    var recordButton = document.getElementById("record");
+    recordButton.innerText = "Stop";
+
+    recorder = new WavRecorder(session.getLocalStream()); // wav-recorder.js
+
+    recorder.start();
 }
 
-async function startSession(iceServers, sessionId) {
+async function stopVoiceRecording() {
+    var recordButton = document.getElementById("record");
+    recordButton.innerText = "Record";
+
+    const wavFile = await recorder.stop();
+    recorder = null;
+
+    // ex. Save as an actual file
+    saveAs(wavFile, "recording.wav"); // FileSaver.js
+}
+
+function canRecord() {
+    return !recording && chatState == 0;
+}
+
+async function startSession(apiServer, sessionId, iceServers, hasIntroMessage, width, height) {
     if (this.unsubscribeSessionStatus !== null) {
         this.unsubscribeSessionStatus();
     }
@@ -53,14 +146,8 @@ async function startSession(iceServers, sessionId) {
         this.unsubscribeChatLog();
     }
 
-    let width, height;
-    width = 1920;
-    height = 1080;
-
-    const videoElement = document.getElementById("video");
-
     try {
-        session = await PersoLiveSDK.createSession(apiServer, iceServers, sessionId, width, height, false);
+        session = await PersoLiveSDK.createSession(apiServer, iceServers, sessionId, width, height);
     } catch (e) {
         applySessionState(0);
         return;
@@ -76,15 +163,23 @@ async function startSession(iceServers, sessionId) {
     this.unsubscribeSessionStatus = session.subscribeSessionStatus((status) => {
         if (status != null) {
             if (status.live) {
+                const videoElement = document.getElementById("video");
+
+                const videoWidth = width / (height / 540);
+                const videoHeight = 540;
+                videoElement.style = `width:${videoWidth}px; height:${videoHeight}px;`;
                 const chatbotContainer = document.getElementById("chatbotContainer");
                 chatbotContainer.style.visibility = "visible";
-                const inputMethodContainer = document.getElementById("inputMethodContainer");
-                inputMethodContainer.style.visibility = "visible";
 
                 session.setSrc(videoElement);
+                if (hasIntroMessage) {
+                    session.intro();
+                }
+
+                applySessionState(2);
             } else {
                 if (status.code === 408) {
-                    alert("Timeout.");
+                    alert(`Timeout.\nSessionID: ${session.getSessionId()}`);
                 }
 
                 applySessionState(0);
@@ -95,102 +190,81 @@ async function startSession(iceServers, sessionId) {
 
 function applySessionState(sessionState) {
     this.sessionState = sessionState;
-}
 
-function stopSpeech() {
-    if (chatState == 3) {
-        session.clearBuffer();
-    }
-}
-
-function onRecordClicked() {
-    var recordButon = document.getElementById("record");
-    if (recordButon.disabled) {
-        return;
-    }
-
-    if (canRecord()) {
-        session.recordStart();
-        recording = true;
-    } else {
-        session.recordEndStt();
-        recording = false;
-    }
-
-    applyChatState(chatState);
-}
-
-function canRecord() {
-    return !recording && chatState == 0;
-}
-
-function onMessageSubmit() {
-    var messageElement = document.getElementById("message");
-    var message = messageElement.value.trim();
-    if (message.length > 0) {
-        messageElement.value = "";
-        session.processChat(message);
-    }
-}
-
-function onMessageKeyPress(keyEvent) {
-    if (keyEvent.key == 'Enter') {
-        onMessageSubmit();
+    var sessionButton = document.getElementById("sessionButton");
+    switch (sessionState) {
+        case 0: {
+            sessionButton.disabled = true;
+            sessionButton.innerText = "STOP";
+            break;
+        }
+        case 1: {
+            sessionButton.disabled = true;
+            break;
+        }
+        case 2: {
+            sessionButton.disabled = false;
+            sessionButton.innerText = "STOP";
+            break;
+        }
     }
 }
 
 function applyChatState(chatState) {
     this.chatState = chatState;
-    var recordButon = document.getElementById("record");
+    var voiceChatButton = document.getElementById("voice");
     var message = document.getElementById("message");
     var sendMessage = document.getElementById("sendMessage");
+    var ttfMessage = document.getElementById("ttfMessage");
+    var sendTtfMessage = document.getElementById("sendTtfMessage");
     
     if (chatState == 0) {
-        recordButon.disabled = false;
-        recordButon.innerText = "Voice";
+        voiceChatButton.disabled = false;
+        voiceChatButton.innerText = "Voice";
         message.disabled = false;
         sendMessage.disabled = false;
+        ttfMessage.disabled = false;
+        sendTtfMessage.disabled = false;
         message.focus();
     } else if (chatState == 1) {
-        recordButon.disabled = false;
-        recordButon.innerText = "Stop";
+        voiceChatButton.disabled = false;
+        voiceChatButton.innerText = "Stop";
         message.disabled = true;
         sendMessage.disabled = true;
+        ttfMessage.disabled = true;
+        sendTtfMessage.disabled = true;
     } else if (chatState == 2) {
-        recordButon.disabled = true;
-        recordButon.innerText = "Analyzing";
+        voiceChatButton.disabled = true;
+        voiceChatButton.innerText = "Analyzing";
         message.disabled = true;
         sendMessage.disabled = true;
+        ttfMessage.disabled = true;
+        sendTtfMessage.disabled = true;
     }  else {
-        recordButon.disabled = true;
-        recordButon.innerText = "AI Speaking";
+        voiceChatButton.disabled = true;
+        voiceChatButton.innerText = "AI Speaking";
         message.disabled = true;
         sendMessage.disabled = true;
+        ttfMessage.disabled = true;
+        sendTtfMessage.disabled = true;
     }
 }
 
-async function load(apiServer) {
-    this.apiServer = apiServer;
+window.onload = function() {
+    let fileSelector = document.getElementById("fileSelector");
+    fileSelector.addEventListener("change", (e) => {
+        const file = e.target.files[0];
+        const isMp3 = file.name.endsWith("mp3");
+        const isWav = file.name.endsWith("wav");
+        let format;
+        if (isMp3) {
+            format = "mp3";
+        } else if (isWav) {
+            format = "wav";
+        } else {
+            return;
+        }
 
-    const sessionResponse = await fetch('/session', { method: 'GET' });
-    if (!sessionResponse.ok) return;
-
-    const sessionJson = await sessionResponse.json();
-    const sessionId = sessionJson.session_id;
-
-    const icesResponse = await fetch('/ices', {
-        body: JSON.stringify(
-            { "session_id": sessionId }
-        ),
-        headers: {
-            'Content-Type': 'application/json'
-        },
-        method: 'POST'
+        session.processSTF(file, format, "");
     });
-    if (!icesResponse.ok) return;
-
-    const icesJson = await icesResponse.json();
-    const iceServers = icesJson.ice_servers;
-
-    startSession(iceServers, sessionId);
 }

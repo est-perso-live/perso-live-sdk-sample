@@ -3,7 +3,9 @@
 
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 	<link rel='stylesheet' href='./global.css'>
-	<script src='https://est-perso-live.github.io/perso-live-sdk/js/v1.0.0/perso-live-sdk.js'></script>
+	<script src='https://est-perso-live.github.io/perso-live-sdk/js/v1.0.2/perso-live-sdk.js'></script>
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+	<script src='./wav-recorder.js'></script>
 	<script src='./index.js'></script>
 
     <style>
@@ -50,6 +52,7 @@
 			color: black;
 			text-align: right;
 		}
+
 		p.title {
 			font-size: 36px;
 			font-weight: 800;
@@ -61,15 +64,6 @@
 			border: 1px;
 			border-color: black;
 			border-style: solid;
-		}
-		video.portrait {
-			display: flex;
-			width: 304px;
-			height: 540px;
-		}
-		video.landscape {
-			width: 960px;
-			height: 540px;
 		}
 		ul.chat-log {
 			display: flex;
@@ -109,7 +103,7 @@
 			border-width: 1px;
 			border-style: solid;
 			margin-top: 18px;
-			width: 1000px;
+			width: 1034px;
 			height: 95px;
 		}
 		.transparent {
@@ -124,24 +118,48 @@
 
 <script lang="ts">
 	import { onMount } from 'svelte';
-	import { persoLiveApiServerUrl } from '$lib/constant';
+	import type { PageServerData } from './$types';
+	export let data: PageServerData;
 
 	onMount(async () => {
-		load(persoLiveApiServerUrl); // index.js
+		startSession(
+			data.persoLiveApiServerUrl,
+			data.sessionId,
+			data.iceServers,
+			data.hasIntroMessage,
+			data.chatbotWidth,
+			data.chatbotHeight
+		); // index.js
 	});
 </script>
 
 <div style="display: block; padding-left: 47px;">
     <p class="title">PERSO LIVE SDK DEMO</p>
-	<div id="chatbotContainer" style="visibility: visible; display: flex; margin-top: 84px;">
+	<div id="chatbotContainer" style="display: flex; margin-top: 84px;">
 		<video id="video" class="landscape" autoplay playsinline onclick="onVideoClicked()"></video>
 		<ul id="chatLog" class="chat-log">
 		</ul>
 	</div>
-	<div id="inputMethodContainer" class="input-method-container" style="visibility: visible;">
-		<button id="record" onclick="onRecordClicked()" style="width: 128px; height: 72px; margin-left: 14px; font-size: 24px; line-height: 28px;"></button>
+	<div id="configContainer" style="display: block;">
+		<button id="sessionButton" class="session" onclick="onSessionClicked();">START</button>
+	</div>
+	<div id="inputMethodContainer1" class="input-method-container">
+		<button id="voice" onclick="onVoiceChatClicked()" style="width: 128px; height: 72px; margin-left: 14px; font-size: 24px; line-height: 28px;">Voice</button>
 		<input id="message" type="text" style="width: 715px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 18px;" onkeypress="onMessageKeyPress(event)" />
 		<button id="sendMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onMessageSubmit()">Send</button>
+	</div>
+	<div id="inputMethodContainer2" class="input-method-container">
+		<p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using text</p>
+		<input id="ttfMessage" type="text" style="width: 543px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 18px;" />
+		<button id="sendTtfMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onTtfMessageSubmit()">Send</button>
+	</div>
+	<div id="inputMethodContainer3" class="input-method-container">
+		<p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using audio(Experimental)</p>
+		<input type="file" id="fileSelector" accept="audio/wav, audio/mp3" style="margin-left: 14px;" />
+	</div>
+	<div id="inputMethodContainer4" class="input-method-container">
+		<p style="margin-left: 14px; font-size: 24px; line-height: 28px;">Record user voice</p>
+		<button id="record" onclick="onRecordVoiceClicked()" style="width: 128px; height: 52px; margin-left: 14px; font-size: 24px; line-height: 28px;">Record</button>
 	</div>
     <br/>
 </div>
