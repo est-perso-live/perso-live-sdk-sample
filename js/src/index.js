@@ -3,6 +3,10 @@ var apiKey = null;
 var session = null;
 var config = null;
 var recording = false;
+var screenOrientation = null;
+var chatbotLeft = 0;
+var chatbotTop = 0;
+var chatbotHeight = 0;
 var chatState = 0; // 0: available 1: recording 2: analyzing 3: AI speaking
 var sessionState = 0; // 0: Initial state(or closed) 1: starting 2: started
 var unsubscribeSessionStatus = null;
@@ -45,7 +49,7 @@ function onSessionClicked() {
         startSession();
 
         applySessionState(1);
-    } else if (this.sessionState == 2) { // this.sessionState == 1
+    } else if (this.sessionState == 2) {
         stopSession();
     }
 }
@@ -152,17 +156,8 @@ async function startSession() {
         this.unsubscribeChatLog();
     }
 
-    const screenOrientations = document.getElementsByName("screenOrientation");
-    let screenOrientation;
-    for (let i = 0; i < screenOrientations.length; i++) {
-        let node = screenOrientations[i];
-        if (node.checked) {
-            screenOrientation = node.value;
-            break;
-        }
-    }
     let width, height;
-    if (screenOrientation == "portrait") {
+    if (this.screenOrientation == "portrait") {
         width = 1080;
         height = 1920;
     } else {
@@ -207,7 +202,10 @@ async function startSession() {
             modelStyleKey,
             promptKey,
             documentKey,
-            backgroundImageKey
+            backgroundImageKey,
+            chatbotLeft / 100,
+            chatbotTop / 100,
+            chatbotHeight / 100
         );
         const icesServers = await PersoLiveSDK.getIceServers(apiServer, apiKey, sessionId);
         session = await PersoLiveSDK.createSession(apiServer, icesServers, sessionId, width, height);
@@ -390,8 +388,76 @@ function applyChatState(chatState) {
     }
 }
 
-window.onload = function() {
-    let fileSelector = document.getElementById("fileSelector");
+function getCheckedValue(radioInputElements) {
+    for (let i = 0; i < radioInputElements.length; i++) {
+        let node = radioInputElements[i];
+        if (node.checked) {
+            return node.value;
+        }
+    }
+
+    return null;
+}
+
+const background = new Image();
+const perso = new Image();
+
+async function loadImage() {
+    const backgroundLoader = new Promise((resolve) => {
+        background.src = "background.png";
+
+        background.onload = function() {
+            resolve();
+        }
+    });
+    const persoLoader = new Promise((resolve) => {
+        perso.src = "perso.png";
+
+        perso.onload = function() {
+            resolve();
+        }
+    });
+
+    await backgroundLoader;
+    await persoLoader;
+}
+
+function redrawChatbotCanvas() {
+    const chatbotCanvas = document.getElementById("chatbotCanvas");
+
+    let width, height;
+    if (screenOrientation == "portrait") {
+        width = 304;
+        height = 540;
+    } else {
+        width = 960;
+        height = 540;
+    }
+    chatbotCanvas.clientWidth = width;
+    chatbotCanvas.clientHeight = height;
+    chatbotCanvas.width = width;
+    chatbotCanvas.height = height;
+
+    const ctx = chatbotCanvas.getContext("2d");
+
+    ctx.drawImage(background, 0, 0, width, height);
+
+    let persoRatio = perso.width / perso.height;
+    let persoWidth = height * persoRatio;
+    let persoHeight = height;
+    persoWidth = Math.min((persoWidth * (chatbotHeight / 100)), width);
+    persoHeight = persoWidth / persoRatio;
+
+    let leftRange = width - persoWidth;
+    let persoLeft = leftRange * (chatbotLeft / 200 + 0.5);
+
+    let persoTop = height * (chatbotTop / 100);
+
+    ctx.drawImage(perso, persoLeft, persoTop, persoWidth, persoHeight);
+}
+
+window.onload = async function() {
+    const fileSelector = document.getElementById("fileSelector");
     fileSelector.addEventListener("change", (e) => {
         const file = e.target.files[0];
         const isMp3 = file.name.endsWith("mp3");
@@ -407,4 +473,70 @@ window.onload = function() {
 
         session.processSTF(file, format, "");
     });
+
+    const screenOrientations = document.getElementsByName("screenOrientation");
+    for (let i = 0; i < screenOrientations.length; i++) {
+        let node = screenOrientations[i];
+        node.addEventListener("change", (e) => {
+            if (e.target.checked) {
+                this.screenOrientation = e.target.value;
+                redrawChatbotCanvas();
+            }
+        });
+    }
+
+    screenOrientations[0].click();
+
+    function toPaddingString(value) {
+        return `${value}(${value/100})`
+    }
+
+    this.chatbotLeft = 0;
+    this.chatbotTop = 0;
+    this.chatbotHeight = 100;
+
+    const chatbotLeftElement = document.getElementById("chatbotLeft");
+    const chatbotLeftValueElement = document.getElementById("chatbotLeftValue");
+    chatbotLeftElement.min = -100;
+    chatbotLeftElement.max = 100;
+    chatbotLeftElement.value = this.chatbotLeft;
+    chatbotLeftElement.addEventListener('input', (ev) => {
+        this.chatbotLeft = ev.target.value;
+        chatbotLeftValueElement.innerHTML = toPaddingString(this.chatbotLeft);
+        redrawChatbotCanvas();
+    });
+
+    const chatbotTopElement = document.getElementById("chatbotTop");
+    const chatbotTopValueElement = document.getElementById("chatbotTopValue");
+    chatbotTopElement.min = 0;
+    chatbotTopElement.max = 100;
+    chatbotTopElement.value = this.chatbotTop;
+    chatbotTopElement.addEventListener('input', (ev) => {
+        this.chatbotTop = ev.target.value;
+        chatbotTopValueElement.innerHTML = toPaddingString(this.chatbotTop);
+        redrawChatbotCanvas();
+    });
+
+    const chatbotHeightElement = document.getElementById("chatbotHeight");
+    const chatbotHeightValueElement = document.getElementById("chatbotHeightValue");
+    chatbotHeightElement.min = 0;
+    chatbotHeightElement.max = 500;
+    chatbotHeightElement.value = this.chatbotHeight;
+    chatbotHeightElement.addEventListener('input', (ev) => {
+        this.chatbotHeight = ev.target.value;
+        chatbotHeightValueElement.innerHTML = toPaddingString(this.chatbotHeight);
+        redrawChatbotCanvas();
+    });
+
+    const inputEvent = new Event('input', {
+        bubbles: true,
+        cancelable: true
+    });
+    chatbotLeftElement.dispatchEvent(inputEvent);
+    chatbotTopElement.dispatchEvent(inputEvent);
+    chatbotHeightElement.dispatchEvent(inputEvent);
+
+    await loadImage();
+
+    redrawChatbotCanvas();
 }
