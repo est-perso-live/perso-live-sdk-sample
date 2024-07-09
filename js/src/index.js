@@ -14,36 +14,6 @@ var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
 var recorder = null;
 
-function refreshChatLog(chatList) {
-    var chatLog = document.getElementById("chatLog");
-    chatLog.innerHTML = "";
-    chatList.forEach(chat => {
-        var li = document.createElement("li");
-        if (chat.isUser) {
-            li.classList = "message-container user";
-        } else {
-            li.classList = "message-container other";
-        }
-
-        var timeSpan = document.createElement("span");
-        timeSpan.classList = "timestamp";
-        timeSpan.innerHTML = chat.timestamp;
-
-        var messageDiv = document.createElement("div");
-        if (chat.isUser) {
-            messageDiv.classList = "message user-message";
-        } else {
-            messageDiv.classList = "message other-message";
-        }
-        messageDiv.innerHTML = chat.text;
-
-        li.appendChild(timeSpan);
-        li.appendChild(messageDiv);
-
-        chatLog.appendChild(li);
-    });
-}
-
 function onSessionClicked() {
     if (this.sessionState == 0) {
         startSession();
@@ -54,8 +24,68 @@ function onSessionClicked() {
     }
 }
 
-function onVideoClicked() {
-    stopSpeech();
+function onVoiceChatClicked() {
+    var voiceChatButton = document.getElementById("voice");
+    if (voiceChatButton.disabled) {
+        return;
+    }
+
+    if (canRecord()) {
+        session.startVoiceChat();
+        recording = true;
+    } else {
+        session.stopVoiceChat();
+        recording = false;
+    }
+}
+
+function onSendMessageClicked() {
+    if (chatState == 3) {
+        stopSpeech();
+    } else {
+        sendMessage();
+    }
+}
+
+function onMessageKeyPress(keyEvent) {
+    if (keyEvent.key == 'Enter') {
+        sendMessage();
+    }
+}
+
+function onTtstfMessageSubmit() {
+    var messageElement = document.getElementById("ttfMessage");
+    var message = messageElement.value.trim();
+    if (message.length > 0) {
+        messageElement.value = "";
+        session.processTTSTF(message);
+    }
+}
+
+function onStfFileChanged(event) {
+    const file = event.target.files[0];
+    const isMp3 = file.name.endsWith("mp3");
+    const isWav = file.name.endsWith("wav");
+    let format;
+    if (isMp3) {
+        format = "mp3";
+    } else if (isWav) {
+        format = "wav";
+    } else {
+        return;
+    }
+
+    session.processSTF(file, format, "");
+}
+
+function onRecordVoiceClicked() {
+    if (canRecord()) {
+        startVoiceRecording();
+        recording = true;
+    } else {
+        stopVoiceRecording();
+        recording = false;
+    }
 }
 
 async function getConfig() {
@@ -65,7 +95,7 @@ async function getConfig() {
     try {
         config = await PersoLiveSDK.getAllSettings(apiServer, apiKey);
     } catch (e) {
-        alert("Invalid API Server url or API Key");
+        alert(e);
         return;
     };
 
@@ -210,6 +240,7 @@ async function startSession() {
         const icesServers = await PersoLiveSDK.getIceServers(apiServer, apiKey, sessionId);
         session = await PersoLiveSDK.createSession(apiServer, icesServers, sessionId, width, height);
     } catch (e) {
+        alert(e);
         applySessionState(0);
         return;
     }
@@ -247,25 +278,12 @@ function stopSession() {
     session.stopSession();
 }
 
-function applySessionState(sessionState) {
-    this.sessionState = sessionState;
-
-    var sessionButton = document.getElementById("sessionButton");
-    switch (sessionState) {
-        case 0: {
-            sessionButton.disabled = false;
-            sessionButton.innerText = "START";
-            break;
-        }
-        case 1: {
-            sessionButton.disabled = true;
-            break;
-        }
-        case 2: {
-            sessionButton.disabled = false;
-            sessionButton.innerText = "STOP";
-            break;
-        }
+function sendMessage() {
+    var messageElement = document.getElementById("message");
+    var message = messageElement.value.trim();
+    if (message.length > 0) {
+        messageElement.value = "";
+        session.processChat(message);
     }
 }
 
@@ -275,32 +293,7 @@ function stopSpeech() {
     }
 }
 
-function onVoiceChatClicked() {
-    var voiceChatButton = document.getElementById("voice");
-    if (voiceChatButton.disabled) {
-        return;
-    }
-
-    if (canRecord()) {
-        session.startVoiceChat();
-        recording = true;
-    } else {
-        session.stopVoiceChat();
-        recording = false;
-    }
-}
-
-async function onRecordVoiceClicked() {
-    if (canRecord()) {
-        startVoiceRecording();
-        recording = true;
-    } else {
-        stopVoiceRecording();
-        recording = false;
-    }
-}
-
-async function startVoiceRecording() {
+function startVoiceRecording() {
     var recordButton = document.getElementById("record");
     recordButton.innerText = "Stop";
 
@@ -324,27 +317,55 @@ function canRecord() {
     return !recording && chatState == 0;
 }
 
-function onMessageSubmit() {
-    var messageElement = document.getElementById("message");
-    var message = messageElement.value.trim();
-    if (message.length > 0) {
-        messageElement.value = "";
-        session.processChat(message);
-    }
+function refreshChatLog(chatList) {
+    var chatLog = document.getElementById("chatLog");
+    chatLog.innerHTML = "";
+    chatList.forEach(chat => {
+        var li = document.createElement("li");
+        if (chat.isUser) {
+            li.classList = "message-container user";
+        } else {
+            li.classList = "message-container other";
+        }
+
+        var timeSpan = document.createElement("span");
+        timeSpan.classList = "timestamp";
+        timeSpan.innerHTML = chat.timestamp;
+
+        var messageDiv = document.createElement("div");
+        if (chat.isUser) {
+            messageDiv.classList = "message user-message";
+        } else {
+            messageDiv.classList = "message other-message";
+        }
+        messageDiv.innerHTML = chat.text;
+
+        li.appendChild(timeSpan);
+        li.appendChild(messageDiv);
+
+        chatLog.appendChild(li);
+    });
 }
 
-function onMessageKeyPress(keyEvent) {
-    if (keyEvent.key == 'Enter') {
-        onMessageSubmit();
-    }
-}
+function applySessionState(sessionState) {
+    this.sessionState = sessionState;
 
-function onTtfMessageSubmit() {
-    var messageElement = document.getElementById("ttfMessage");
-    var message = messageElement.value.trim();
-    if (message.length > 0) {
-        messageElement.value = "";
-        session.processTTSTF(message);
+    var sessionButton = document.getElementById("sessionButton");
+    switch (sessionState) {
+        case 0: {
+            sessionButton.disabled = false;
+            sessionButton.innerText = "START";
+            break;
+        }
+        case 1: {
+            sessionButton.disabled = true;
+            break;
+        }
+        case 2: {
+            sessionButton.disabled = false;
+            sessionButton.innerText = "STOP";
+            break;
+        }
     }
 }
 
@@ -360,6 +381,7 @@ function applyChatState(chatState) {
         voiceChatButton.disabled = false;
         voiceChatButton.innerText = "Voice";
         message.disabled = false;
+        sendMessage.innerText = "Send";
         sendMessage.disabled = false;
         ttfMessage.disabled = false;
         sendTtfMessage.disabled = false;
@@ -382,21 +404,11 @@ function applyChatState(chatState) {
         voiceChatButton.disabled = true;
         voiceChatButton.innerText = "AI Speaking";
         message.disabled = true;
-        sendMessage.disabled = true;
+        sendMessage.innerText = "Stop speech";
+        sendMessage.disabled = false;
         ttfMessage.disabled = true;
         sendTtfMessage.disabled = true;
     }
-}
-
-function getCheckedValue(radioInputElements) {
-    for (let i = 0; i < radioInputElements.length; i++) {
-        let node = radioInputElements[i];
-        if (node.checked) {
-            return node.value;
-        }
-    }
-
-    return null;
 }
 
 const background = new Image();
@@ -457,23 +469,6 @@ function redrawChatbotCanvas() {
 }
 
 window.onload = async function() {
-    const fileSelector = document.getElementById("fileSelector");
-    fileSelector.addEventListener("change", (e) => {
-        const file = e.target.files[0];
-        const isMp3 = file.name.endsWith("mp3");
-        const isWav = file.name.endsWith("wav");
-        let format;
-        if (isMp3) {
-            format = "mp3";
-        } else if (isWav) {
-            format = "wav";
-        } else {
-            return;
-        }
-
-        session.processSTF(file, format, "");
-    });
-
     const screenOrientations = document.getElementsByName("screenOrientation");
     for (let i = 0; i < screenOrientations.length; i++) {
         let node = screenOrientations[i];
