@@ -3,7 +3,7 @@
 
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 	<link rel='stylesheet' href='./global.css'>
-	<script src='https://est-perso-live.github.io/perso-live-sdk/js/v1.0.2/perso-live-sdk.js'></script>
+	<script src='https://est-perso-live.github.io/perso-live-sdk/js/v1.0.4/perso-live-sdk.js'></script>
 	<script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
 	<script src='./wav-recorder.js'></script>
 	<script src='./index.js'></script>
@@ -146,20 +146,20 @@
 	<div id="inputMethodContainer1" class="input-method-container">
 		<button id="voice" onclick="onVoiceChatClicked()" style="width: 128px; height: 72px; margin-left: 14px; font-size: 24px; line-height: 28px;">Voice</button>
 		<input id="message" type="text" style="width: 715px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 18px;" onkeypress="onMessageKeyPress(event)" />
-		<button id="sendMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onMessageSubmit()">Send</button>
+		<button id="sendMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onSendMessageClicked()">Send</button>
 	</div>
 	<div id="inputMethodContainer2" class="input-method-container">
 		<p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using text</p>
 		<input id="ttfMessage" type="text" style="width: 543px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 18px;" />
-		<button id="sendTtfMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onTtfMessageSubmit()">Send</button>
+		<button id="sendTtfMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onTtstfMessageSubmit()">Send</button>
 	</div>
 	<div id="inputMethodContainer3" class="input-method-container">
 		<p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using audio(Experimental)</p>
-		<input type="file" id="fileSelector" accept="audio/wav, audio/mp3" style="margin-left: 14px;" />
+		<input type="file" id="fileSelector" accept="audio/wav, audio/mp3" style="margin-left: 14px;" onchange="onStfFileChanged(event)" />
 	</div>
 	<div id="inputMethodContainer4" class="input-method-container">
 		<p style="margin-left: 14px; font-size: 24px; line-height: 28px;">Record user voice</p>
 		<button id="record" onclick="onRecordVoiceClicked()" style="width: 128px; height: 52px; margin-left: 14px; font-size: 24px; line-height: 28px;">Record</button>
 	</div>
-    <br/>
+	<br/>
 </div>

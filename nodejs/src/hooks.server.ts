@@ -8,7 +8,10 @@ export const config = {
 	prompt: '',
 	document: '',
 	backgroundImage: '',
-	introMessage: ''
+	introMessage: '',
+	padding_left: 0.0, // -1.0 ~ 1.0
+	padding_top: 0.0, // 0.0 ~ 1.0
+	padding_height: 1.0 // 0.0 ~ 5.0
 }
 // ex
 /*
@@ -20,7 +23,10 @@ export const config = {
 	prompt: allConfig.prompts[0].prompt_id,
 	document: allConfig.documents.length > 0 ? allConfig.documents[0].document_id : null,
 	backgroundImage: allConfig.backgroundImages.length > 0 ? allConfig.backgroundImages[0].backgroundimage_id : null,
-	introMessage: allConfig.prompts[0].intro_message
+	introMessage: allConfig.prompts[0].intro_message,
+	padding_left: 0.0,
+	padding_top: 0.15,
+	padding_height: 1.0
 }
 */
 

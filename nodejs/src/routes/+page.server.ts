@@ -19,7 +19,10 @@ async function createSessionId(
     model_style: string,
     prompt: string,
     document?: string,
-    background_image?: string
+    background_image?: string,
+    padding_left?: number,
+    padding_top?: number,
+    padding_height?: number
 ) {
     const response = await fetch(`${apiServer}/api/v1/session/`, {
         body: JSON.stringify({
@@ -28,7 +31,10 @@ async function createSessionId(
             model_style,
             prompt,
             document,
-            background_image
+            background_image,
+            padding_left,
+            padding_top,
+            padding_height
         }),
         headers: {
             'PersoLive-APIKey': apiKey,
@@ -78,7 +84,10 @@ export const load = (async () => {
         config.modelStyle,
         config.prompt,
         config.document,
-        config.backgroundImage
+        config.backgroundImage,
+        config.padding_left,
+        config.padding_top,
+        config.padding_height
     )
     const iceServers = await getIceServers(
         persoLiveApiServerUrl, persoLiveApiKey, sessionId
