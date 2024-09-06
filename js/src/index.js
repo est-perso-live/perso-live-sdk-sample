@@ -12,6 +12,7 @@ var sessionState = 0; // 0: Initial state(or closed) 1: starting 2: started
 var unsubscribeSessionStatus = null;
 var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
+var unsubscribeStfStartEvent = null;
 var recorder = null;
 
 function onSessionClicked() {
@@ -62,7 +63,7 @@ function onTtstfMessageSubmit() {
     }
 }
 
-function onStfFileChanged(event) {
+async function onStfFileChanged(event) {
     const file = event.target.files[0];
     const isMp3 = file.name.endsWith("mp3");
     const isWav = file.name.endsWith("wav");
@@ -75,7 +76,7 @@ function onStfFileChanged(event) {
         return;
     }
 
-    session.processSTF(file, format, "");
+    let file_ref = session.processSTF(file, format, "");
 }
 
 function onRecordVoiceClicked() {
@@ -185,6 +186,9 @@ async function startSession() {
     if (this.unsubscribeChatLog !== null) {
         this.unsubscribeChatLog();
     }
+    if (this.unsubscribeStfStartEvent !== null) {
+        this.unsubscribeStfStartEvent();
+    }
 
     let width, height;
     if (this.screenOrientation == "portrait") {
@@ -237,7 +241,7 @@ async function startSession() {
             chatbotTop / 100,
             chatbotHeight / 100
         );
-        const icesServers = await PersoLiveSDK.getIceServers(apiServer, apiKey, sessionId);
+        const icesServers = await PersoLiveSDK.getIceServers(apiServer, sessionId);
         session = await PersoLiveSDK.createSession(apiServer, icesServers, sessionId, width, height);
     } catch (e) {
         alert(e);
@@ -251,6 +255,9 @@ async function startSession() {
     });
     this.unsubscribeChatStatus = session.subscribeMicStatus((status) => {
         applyChatState(status);
+    });
+    this.unsubscribeStfStartEvent = session.subscribeStfStartEvent((stfStartEvent) => {
+        console.log(`${stfStartEvent.name}-${stfStartEvent.duration}`);
     });
     this.unsubscribeSessionStatus = session.subscribeSessionStatus((status) => {
         if (status != null) {
