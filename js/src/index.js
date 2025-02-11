@@ -242,8 +242,7 @@ async function startSession() {
             chatbotTop / 100,
             chatbotHeight / 100
         );
-        const icesServers = await PersoLiveSDK.getIceServers(apiServer, sessionId);
-        session = await PersoLiveSDK.createSession(apiServer, icesServers, sessionId, width, height, enableVoiceChat);
+        session = await PersoLiveSDK.createSession(apiServer, sessionId, width, height, enableVoiceChat);
 
         videoElement.classList = screenOrientation;
         session.setSrc(videoElement);
@@ -274,7 +273,12 @@ async function startSession() {
 
     this.removeOnClose = session.onClose((manualClosed) => {
         if (!manualClosed) {
-            alert(`Timeout.\nSessionID: ${session.getSessionId()}`);
+            setTimeout(() => {
+                PersoLiveSDK.getSessionInfo(apiServer, session.getSessionId())
+                    .then((response) => {
+                        alert(response.termination_reason);
+                    });
+            }, 500);
         }
 
         applySessionState(0);
