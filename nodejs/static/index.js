@@ -3,9 +3,10 @@ var config = null;
 var recording = false;
 var chatState = 0; // 0: available 1: recording 2: analyzing 3: AI speaking
 var sessionState = 0; // 0: Initial state(or closed) 1: starting 2: started
-var unsubscribeSessionStatus = null;
+var removeOnClose = null;
 var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
+var unsubscribeStfStartEvent = null;
 var recorder = null;
 
 function onSessionClicked() {
@@ -82,9 +83,11 @@ function onRecordVoiceClicked() {
     }
 }
 
-async function startSession(apiServer, sessionId, iceServers, hasIntroMessage, width, height) {
-    if (this.unsubscribeSessionStatus !== null) {
-        this.unsubscribeSessionStatus();
+async function startSession(apiServer, sessionId, useIntroMessage, width, height, enableVoiceChat) {
+    applySessionState(0);
+
+    if (this.removeOnClose !== null) {
+        this.removeOnClose();
     }
     if (this.unsubscribeChatStatus !== null) {
         this.unsubscribeChatStatus();
@@ -92,9 +95,30 @@ async function startSession(apiServer, sessionId, iceServers, hasIntroMessage, w
     if (this.unsubscribeChatLog !== null) {
         this.unsubscribeChatLog();
     }
+    if (this.unsubscribeStfStartEvent !== null) {
+        this.unsubscribeStfStartEvent();
+    }
 
     try {
-        session = await PersoLiveSDK.createSession(apiServer, iceServers, sessionId, width, height);
+        session = await PersoLiveSDK.createSession(apiServer, sessionId, width, height, enableVoiceChat);
+
+        const videoElement = document.getElementById("video");
+
+        const videoWidth = width / (height / 540);
+        const videoHeight = 540;
+        videoElement.style = `width:${videoWidth}px; height:${videoHeight}px;`;
+        const chatbotContainer = document.getElementById("chatbotContainer");
+        chatbotContainer.style.visibility = "visible";
+
+        session.setSrc(videoElement);
+
+        applyChatState(0);
+
+        if (useIntroMessage) {
+            session.intro();
+        }
+
+        applySessionState(2);
     } catch (e) {
         alert(e);
         applySessionState(0);
@@ -108,31 +132,20 @@ async function startSession(apiServer, sessionId, iceServers, hasIntroMessage, w
     this.unsubscribeChatStatus = session.subscribeMicStatus((status) => {
         applyChatState(status);
     });
-    this.unsubscribeSessionStatus = session.subscribeSessionStatus((status) => {
-        if (status != null) {
-            if (status.live) {
-                const videoElement = document.getElementById("video");
-
-                const videoWidth = width / (height / 540);
-                const videoHeight = 540;
-                videoElement.style = `width:${videoWidth}px; height:${videoHeight}px;`;
-                const chatbotContainer = document.getElementById("chatbotContainer");
-                chatbotContainer.style.visibility = "visible";
-
-                session.setSrc(videoElement);
-                if (hasIntroMessage) {
-                    session.intro();
-                }
-
-                applySessionState(2);
-            } else {
-                if (status.code === 408) {
-                    alert(`Timeout.\nSessionID: ${session.getSessionId()}`);
-                }
-
-                applySessionState(0);
-            }
+    this.unsubscribeStfStartEvent = session.subscribeStfStartEvent((stfStartEvent) => {
+        console.log(`${stfStartEvent.name}-${stfStartEvent.duration}`);
+    });
+    this.removeOnClose = session.onClose((manualClosed) => {
+        if (!manualClosed) {
+            setTimeout(() => {
+                PersoLiveSDK.getSessionInfo(apiServer, session.getSessionId())
+                    .then((response) => {
+                        alert(response.termination_reason);
+                    });
+            }, 500);
         }
+
+        applySessionState(0);
     });
 }
 
@@ -233,22 +246,27 @@ function applySessionState(sessionState) {
 
 function applyChatState(chatState) {
     this.chatState = chatState;
-    var voiceChatButton = document.getElementById("voice");
-    var message = document.getElementById("message");
-    var sendMessage = document.getElementById("sendMessage");
-    var ttfMessage = document.getElementById("ttfMessage");
-    var sendTtfMessage = document.getElementById("sendTtfMessage");
+    const chatStateDescription = document.getElementById("chatStateDescription");
+    const stopSppechButton = document.getElementById("stopSpeech");
+    const voiceChatButton = document.getElementById("voice");
+    const message = document.getElementById("message");
+    const sendMessage = document.getElementById("sendMessage");
+    const ttfMessage = document.getElementById("ttfMessage");
+    const sendTtfMessage = document.getElementById("sendTtfMessage");
     
     if (chatState == 0) {
+        chatStateDescription.innerText = "Available";
+        stopSppechButton.disabled = true;
         voiceChatButton.disabled = false;
-        voiceChatButton.innerText = "Voice";
+        voiceChatButton.innerText = "Start";
         message.disabled = false;
-        sendMessage.innerText = "Send";
         sendMessage.disabled = false;
         ttfMessage.disabled = false;
         sendTtfMessage.disabled = false;
         message.focus();
     } else if (chatState == 1) {
+        chatStateDescription.innerText = "Recording";
+        stopSppechButton.disabled = true;
         voiceChatButton.disabled = false;
         voiceChatButton.innerText = "Stop";
         message.disabled = true;
@@ -256,18 +274,21 @@ function applyChatState(chatState) {
         ttfMessage.disabled = true;
         sendTtfMessage.disabled = true;
     } else if (chatState == 2) {
+        chatStateDescription.innerText = "Analyzing";
+        stopSppechButton.disabled = true;
         voiceChatButton.disabled = true;
-        voiceChatButton.innerText = "Analyzing";
+        voiceChatButton.innerText = "Start";
         message.disabled = true;
         sendMessage.disabled = true;
         ttfMessage.disabled = true;
         sendTtfMessage.disabled = true;
     }  else {
+        chatStateDescription.innerText = "AI Speaking";
+        stopSppechButton.disabled = false;
         voiceChatButton.disabled = true;
-        voiceChatButton.innerText = "AI Speaking";
+        voiceChatButton.innerText = "Start";
         message.disabled = true;
-        sendMessage.innerText = "Stop speech";
-        sendMessage.disabled = false;
+        sendMessage.disabled = true;
         ttfMessage.disabled = true;
         sendTtfMessage.disabled = true;
     }

@@ -1,30 +1,69 @@
-import { config } from '../../hooks.server';
-import { persoLiveApiKey, persoLiveApiServerUrl } from '$lib/constant'
+import {
+    persoLiveApiServerUrl,
+    persoLiveApiKey
+} from '$lib/constant';
+import { error } from '@sveltejs/kit';
+import { config } from '../../hooks.server'
+
+async function createSessionId(
+    apiServer: string,
+    apiKey: string,
+    llm_type: string,
+    tts_type: string,
+    model_style: string,
+    prompt: string,
+    document?: string,
+    background_image?: string,
+    padding_left?: number,
+    padding_top?: number,
+    padding_height?: number
+) {
+    const response = await fetch(`${apiServer}/api/v1/session/`, {
+        body: JSON.stringify({
+            llm_type,
+            tts_type,
+            model_style,
+            prompt,
+            document,
+            background_image,
+            padding_left,
+            padding_top,
+            padding_height
+        }),
+        headers: {
+            'PersoLive-APIKey': apiKey,
+            'Content-Type': 'application/json'
+        },
+        method: 'POST'
+    });
+
+    if (!response.ok) {
+        throw error(408);
+    }
+
+    let json = await response.json();
+    return json.session_id;
+}
 
 export async function GET() {
-	const response = await fetch(`${persoLiveApiServerUrl}/api/v1/session/`, {
-		body: JSON.stringify({
-			llm_type: config.llm,
-			tts_type: config.tts,
-			model_style: config.modelStyle,
-			prompt: config.prompt,
-			document: config.document
-		}),
-		headers: {
-			'PersoLive-APIKey': persoLiveApiKey,
-			'Content-Type': 'application/json'
-		},
-		method: 'POST'
-	});
+    const sessionId = await createSessionId(
+        persoLiveApiServerUrl,
+        persoLiveApiKey,
+        config.llm,
+        config.tts,
+        config.modelStyle,
+        config.prompt,
+        config.document,
+        config.backgroundImage,
+        config.padding_left,
+        config.padding_top,
+        config.padding_height
+    )
 
-	return response;
-}
-
-export async function OPTIONS() {
-	return new Response(null, {
-	  headers: {
-		'Access-Control-Allow-Origin': '*',
-		'Access-Control-Allow-Methods': 'GET, OPTIONS'
-	  },
-	})
-}
+    return new Response(
+        JSON.stringify({ sessionId }),
+        {
+            headers: { 'Content-Type': 'application/json' }
+        }
+    );
+};
