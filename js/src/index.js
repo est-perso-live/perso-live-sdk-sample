@@ -490,12 +490,15 @@ function redrawChatbotCanvas() {
 window.onload = async function() {
     const enableVoiceChat = document.getElementById("enableVoiceChat");
     enableVoiceChat.addEventListener("change", (e) => {
-        let voiceChatContainer = document.getElementById("inputMethodContainer2");
+        const voiceChatContainer = document.getElementById("inputMethodContainer2");
+        const recordVoiceContainer = document.getElementById("inputMethodContainer5");
         this.enableVoiceChat = e.target.checked;
         if (this.enableVoiceChat) {
             voiceChatContainer.style.display = "flex";
+            recordVoiceContainer.style.display = "flex";
         } else {
             voiceChatContainer.style.display = "none";
+            recordVoiceContainer.style.display = "none";
         }
     });
 
