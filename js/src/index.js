@@ -14,14 +14,15 @@ var removeOnClose = null;
 var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
 var unsubscribeStfStartEvent = null;
+var removeSttResultCallback = null;
 var recorder = null;
 
 function onSessionClicked() {
-    if (this.sessionState == 0) {
+    if (this.sessionState === 0) {
         startSession();
 
         applySessionState(1);
-    } else if (this.sessionState == 2) {
+    } else if (this.sessionState === 2) {
         stopSession();
     }
 }
@@ -42,7 +43,7 @@ function onVoiceChatClicked() {
 }
 
 function onSendMessageClicked() {
-    if (chatState == 3) {
+    if (chatState === 3) {
         stopSpeech();
     } else {
         sendMessage();
@@ -50,7 +51,7 @@ function onSendMessageClicked() {
 }
 
 function onMessageKeyPress(keyEvent) {
-    if (keyEvent.key == 'Enter') {
+    if (keyEvent.key === 'Enter') {
         sendMessage();
     }
 }
@@ -155,7 +156,7 @@ async function getConfig() {
         option.value = index;
         option.innerText = value.name;
         promptOptions.appendChild(option);
-        if (index == 0) {
+        if (index === 0) {
             document.getElementById("introMessage").innerText = value.intro_message;
         }
     });
@@ -178,21 +179,24 @@ async function getConfig() {
 }
 
 async function startSession() {
-    if (this.removeOnClose !== null) {
+    if (this.removeOnClose != null) {
         this.removeOnClose();
     }
-    if (this.unsubscribeChatStatus !== null) {
+    if (this.unsubscribeChatStatus != null) {
         this.unsubscribeChatStatus();
     }
-    if (this.unsubscribeChatLog !== null) {
+    if (this.unsubscribeChatLog != null) {
         this.unsubscribeChatLog();
     }
-    if (this.unsubscribeStfStartEvent !== null) {
+    if (this.unsubscribeStfStartEvent != null) {
         this.unsubscribeStfStartEvent();
+    }
+    if (this.removeSttResultCallback != null) {
+        this.removeSttResultCallback();
     }
 
     let width, height;
-    if (this.screenOrientation == "portrait") {
+    if (this.screenOrientation === 'portrait') {
         width = 1080;
         height = 1920;
     } else {
@@ -211,7 +215,7 @@ async function startSession() {
 
     let backgroundImageOptionIndex = document.getElementById("backgroundImage").value;
     let backgroundImageKey;
-    if (backgroundImageOptionIndex.length == 0) { // ''
+    if (backgroundImageOptionIndex.length === 0) { // ''
         backgroundImageKey = null;
     } else {
         backgroundImageKey = config.backgroundImages[parseInt(backgroundImageOptionIndex)].backgroundimage_id;
@@ -264,13 +268,19 @@ async function startSession() {
     this.unsubscribeChatLog = session.subscribeChatLog((chatLog) => {
         refreshChatLog(chatLog);
     });
-    this.unsubscribeChatStatus = session.subscribeMicStatus((status) => {
+    this.unsubscribeChatStatus = session.subscribeChatStatus((status) => {
         applyChatState(status);
     });
     this.unsubscribeStfStartEvent = session.subscribeStfStartEvent((stfStartEvent) => {
         console.log(`${stfStartEvent.name}-${stfStartEvent.duration}`);
     });
-
+    // this.removeSttResultCallback = session.setSttResultCallback((sttResult) => {
+    //     if (sttResult !== '') {
+    //         session.processChat(sttResult);
+    //     } else {
+    //         alert('Your voice was not recognized.');
+    //     }
+    // });
     this.removeOnClose = session.onClose((manualClosed) => {
         if (!manualClosed) {
             setTimeout(() => {
@@ -299,7 +309,7 @@ function sendMessage() {
 }
 
 function stopSpeech() {
-    if (chatState == 3) {
+    if (chatState === 3) {
         session.clearBuffer();
     }
 }
@@ -325,7 +335,7 @@ async function stopVoiceRecording() {
 }
 
 function canRecord() {
-    return !recording && chatState == 0;
+    return !recording && chatState === 0;
 }
 
 function refreshChatLog(chatList) {
@@ -390,7 +400,7 @@ function applyChatState(chatState) {
     const ttfMessage = document.getElementById("ttfMessage");
     const sendTtfMessage = document.getElementById("sendTtfMessage");
     
-    if (chatState == 0) {
+    if (chatState === 0) {
         chatStateDescription.innerText = "Available";
         stopSppechButton.disabled = true;
         voiceChatButton.disabled = false;
@@ -400,7 +410,7 @@ function applyChatState(chatState) {
         ttfMessage.disabled = false;
         sendTtfMessage.disabled = false;
         message.focus();
-    } else if (chatState == 1) {
+    } else if (chatState === 1) {
         chatStateDescription.innerText = "Recording";
         stopSppechButton.disabled = true;
         voiceChatButton.disabled = false;
@@ -409,7 +419,7 @@ function applyChatState(chatState) {
         sendMessage.disabled = true;
         ttfMessage.disabled = true;
         sendTtfMessage.disabled = true;
-    } else if (chatState == 2) {
+    } else if (chatState === 2) {
         chatStateDescription.innerText = "Analyzing";
         stopSppechButton.disabled = true;
         voiceChatButton.disabled = true;
@@ -457,7 +467,7 @@ function redrawChatbotCanvas() {
     const chatbotCanvas = document.getElementById("chatbotCanvas");
 
     let width, height;
-    if (screenOrientation == "portrait") {
+    if (screenOrientation === 'portrait') {
         width = 304;
         height = 540;
     } else {

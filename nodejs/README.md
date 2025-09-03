@@ -9,7 +9,7 @@ routes/+page.svelte - Sample page
 hooks.server.ts - Server side configuration  
 static/favicon.png, static/global.css, static/index.js - Components of routes/+page.svelte  
 static/wav-recorder.js - Used for mediastream recording  
-https://est-perso-live.github.io/perso-live-sdk/js/v1.0.7/perso-live-sdk.js - PersoLiveSDK for JavaScript(v1.0.7)  
+https://est-perso-live.github.io/perso-live-sdk/js/v1.0.8/perso-live-sdk.js - PersoLiveSDK for JavaScript(v1.0.8)  
 
 ## Developing
 Installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server.
@@ -35,4 +35,4 @@ npm run preview
 ```
 
 ## PersoLiveSDK
-[[PersoLiveSDK v1.0.7 README](https://est-perso-live.github.io/perso-live-sdk/js/v1.0.7)]
+[[PersoLiveSDK v1.0.8 README](https://est-perso-live.github.io/perso-live-sdk/js/v1.0.8)]

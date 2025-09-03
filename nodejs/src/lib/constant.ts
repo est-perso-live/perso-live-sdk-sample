@@ -5,4 +5,4 @@ export const persoLiveApiKey = '';
 export const useIntroMessage = false;
 export const chatbotWidth = 1920;
 export const chatbotHeight = 1080;
-export const enableVoiceChat = false;
+export const enableVoiceChat = true;
