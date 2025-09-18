@@ -1,5 +1,5 @@
 <svelte:head>
-	<title>PERSO LIVE SDK DEMO</title>
+	<title>Perso AI Live Chat SDK demo</title>
 
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 	<link rel='stylesheet' href='./global.css'>

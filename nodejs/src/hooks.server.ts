@@ -50,8 +50,8 @@ async function getAllConfig() {
 }
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {
@@ -75,8 +75,8 @@ async function getLLMs(apiServer: string, apiKey: string) {
 }
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {
@@ -102,8 +102,8 @@ async function getTTSs(apiServer: string, apiKey: string) {
 }
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {
@@ -129,8 +129,8 @@ async function getModelStyles(apiServer: string, apiKey: string) {
 
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {
@@ -156,8 +156,8 @@ async function getBackgroundImages(apiServer: string, apiKey: string) {
 }
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {
@@ -186,8 +186,8 @@ async function getPrompts(apiServer: string, apiKey: string) {
 }
 
 /**
- * @param apiServer Perso Live API Server
- * @param apiKey Perso Live API Key
+ * @param apiServer Perso AI Live Chat API Server
+ * @param apiKey Perso AI Live Chat API Key
  * @returns JSON
  * [
  *   {

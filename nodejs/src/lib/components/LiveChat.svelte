@@ -126,7 +126,7 @@
 </script>
 
 <div style="display: block; padding-left: 47px;">
-    <p class="title">PERSO LIVE SDK DEMO</p>
+    <p class="title">Perso AI Live Chat SDK demo</p>
 	<div id="chatbotContainer" style="display: flex; margin-top: 84px;">
 		<video id="video" class="landscape" autoplay playsinline></video>
 		<ul id="chatLog" class="chat-log">
