@@ -1,49 +1,5 @@
 <svelte:head>
     <style>
-        .message-container {
-            display: flex;
-            flex-direction: column;
-        }
-        .message-container.user {
-            margin-left: auto;
-            align-items: flex-end;
-        }
-        .message-container.other {
-            margin-right: auto;
-            align-items: flex-start;
-        }
-        .message {
-            padding: 18px 20px;
-            border-radius: 20px;
-            max-width: 315px;
-            box-sizing: border-box;
-            margin: 0px 0px 10px 0px;
-        }
-        .user-message {
-            margin-left: auto;
-            background-color: white;
-            color: black;
-            font-size: 16px;
-            letter-spacing: -0.01em;
-            line-height: 150%;
-            overflow-wrap: break-word;
-        }
-        .other-message {
-            background-color: #343434;
-            color: white;
-            font-size: 16px;
-            letter-spacing: -0.01em;
-            line-height: 150%;
-            overflow-wrap: break-word;
-        }
-        .timestamp {
-            display: block;
-            margin: 8px 12px;
-            font-size: 12px;
-            color: black;
-            text-align: right;
-        }
-
         p.title {
             font-size: 36px;
             font-weight: 800;
@@ -51,27 +7,7 @@
             margin-bottom: 0px;
             line-height: 49px;
         }
-        video {
-            border: 1px;
-            border-color: black;
-            border-style: solid;
-        }
-        ul.chat-log {
-            display: flex;
-            flex-direction: column-reverse;
-            overflow-y: auto;
-            flex-grow: 1;
-            padding-inline: 10px;
-            width: 400px;
-            height: 540px;
-            max-width: 400px;
-            border: 1px;
-            border-color: black;
-            border-style: solid;
-            margin: 0px;
-            background-color: #999999;
-            list-style: none;
-        }
+
         button.session {
             width: 380px;
             height: 56px;
@@ -108,58 +44,191 @@
 </svelte:head>
 
 <script lang="ts">
-	import { enableVoiceChat } from '$lib/constant';
-    import { onMount } from 'svelte';
+    import { Session, SessionConfig, type Chat } from '$lib/session';
+    import { onDestroy, onMount, tick } from 'svelte';
+	import Video from './Video.svelte';
+	import ChatLog from './ChatLog.svelte';
+	import ChatState from './ChatState.svelte';
+	import ChatInput from './ChatInput.svelte';
+	import VoiceChat from './VoiceChat.svelte';
+	import TTSTFInput from './TTSTFInput.svelte';
+	import STFInput from './STFInput.svelte';
 
-    export let liveChatConfig;
+    export let sessionConfig: SessionConfig;
+    export let useIntro: boolean;
+
+    let session: Session;
+    let unsubscribes: (() => void)[] = [];
+
+    let chatState: number = -1; // 0: available 1: recording 2: analyzing 3: AI speaking
+    let sessionState: number = 0; // 0: Initial state(or closed) 1: starting 2: started
+    let sessionButton: HTMLButtonElement;
+
+    let videoWidth: number;
+    let videoHeight: number;
+
+    let chatLog: Array<Chat> = [];
+
+    let chatStateDescriptionText: string = '';
+    $: resetChatStateDescriptionText(chatState);
 
 	onMount(async () => {
-        startSession(
-			liveChatConfig.apiServerUrl,
-			liveChatConfig.sessionId,
-            liveChatConfig.useIntroMessage,
-			liveChatConfig.chatbotWidth,
-			liveChatConfig.chatbotHeight,
-			liveChatConfig.enableVoiceChat
-		); // index.js
+        videoWidth = sessionConfig.chatbotWidth / (sessionConfig.chatbotHeight / 540);
+        videoHeight = 540;
+
+        sessionState = 0;
+
+        try {
+            session = await Session.create(sessionConfig);
+
+            chatState = 0;
+
+            if (useIntro) {
+                session.intro();
+            }
+
+            sessionState = 2;
+        } catch (e) {
+            alert(e);
+            sessionState = 0;
+            return;
+        }
+
+        const unsubscribeChatLog = session.subscribeChatLog((log) => {
+            chatLog = log;
+        });
+        const unsubscribeChatStatus = session.subscribeChatStatus((state) => {
+            chatState = state;
+        });
+        // this.removeSttResultCallback = session.setSttResultCallback((sttResult) => {
+        //     if (sttResult !== '') {
+        //         session.processChat(sttResult);
+        //     } else {
+        //         alert('Your voice was not recognized.');
+        //     }
+        // });
+        const removeOnClose = session.onClose((manualClosed) => {
+            if (!manualClosed) {
+                setTimeout(() => {
+                    session.getSessionInfo()
+                        .then((response: any) => {
+                            alert(response.termination_reason);
+                        });
+                }, 500);
+            }
+
+            sessionState = 0;
+        });
+        unsubscribes.push(unsubscribeChatLog, unsubscribeChatStatus,/* removeSttResultCallback,*/ removeOnClose);
 	});
+
+    onDestroy(() => {
+        return () => {
+            unsubscribes.forEach((unsubscribe) => {
+                unsubscribe();
+            })
+        }
+    });
+
+    function onStopSessionClicked() {
+        session.stopSession();
+    }
+
+    function onStopSpeechClicked() {
+        session.clearBuffer();
+    }
+
+    function onMessageSubmit(message: string) {
+        session.processChat(message);
+    }
+
+    function onTtstfMessageSubmit(message: string) {
+        session.processTTSTF(message);
+    }
+
+    function onVoiceChatClicked() {
+        if (chatState === 0) {
+            session.startVoiceChat();
+        } else {
+            session.stopVoiceChat();
+        }
+    }
+
+    function onStfFileChanged(file: File) {
+        const isMp3 = file.name.endsWith("mp3");
+        const isWav = file.name.endsWith("wav");
+        let format;
+        if (isMp3) {
+            format = "mp3";
+        } else if (isWav) {
+            format = "wav";
+        } else {
+            return;
+        }
+
+        session.processSTF(file, format, "");
+    }
+
+    function onVideoReady(video: HTMLVideoElement) {
+        session.setSrc(video);
+    }
+
+    async function resetChatStateDescriptionText(chatState: number) {
+        if (chatState === 0) {
+            chatStateDescriptionText = 'Available';
+        } else if (chatState === 1) {
+            chatStateDescriptionText = 'Recording';
+        } else if (chatState === 2) {
+            chatStateDescriptionText = 'Analyzing';
+        }  else if (chatState === 3) {
+            chatStateDescriptionText = 'AI Speaking';
+        }
+    }
 </script>
 
-<div style="display: block; padding-left: 47px;">
-    <p class="title">Perso AI Live Chat SDK demo</p>
-	<div id="chatbotContainer" style="display: flex; margin-top: 84px;">
-		<video id="video" class="landscape" autoplay playsinline></video>
-		<ul id="chatLog" class="chat-log">
-		</ul>
+<div style='display: block; padding-left: 47px;'>
+    <p class='title'>Perso AI Live Chat SDK demo</p>
+	<div style='display: flex; margin-top: 84px;'>
+        {#if session != null}
+        <Video width={videoWidth} height={videoHeight} onVideoReady={onVideoReady} />
+        {:else}
+        <div class='border1px' style='display:flex; width:{videoWidth}px; height:{videoHeight}px;'></div>
+        {/if}
+        <ChatLog chatLog={chatLog} />
 	</div>
-	<div id="configContainer" style="display: block;">
-		<button id="sessionButton" class="session" onclick="onSessionClicked();">START</button>
+	<div style='display: block;'>
+		<button
+            bind:this={sessionButton}
+            class='session'
+            on:click={sessionState === 2 ? onStopSessionClicked : null}
+            disabled={sessionState === 2 ? false : true}
+        >
+            {sessionState === 2 ? 'STOP' : 'START'}
+        </button>
 	</div>
-    <div id="chatStateContainer" class="input-method-container">
-        <p style="width: 150px; margin-left: 14px; font-size: 24px; line-height: 28px;">Chat state : </p>
-        <p id="chatStateDescription" style="width: 697px; margin-left: 14px; font-size: 24px; line-height: 28px;">Available</p>
-        <button id="stopSpeech" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onSendMessageClicked()">Stop Speech</button>
-    </div>
-    <div id="inputMethodContainer1" class="input-method-container">
-        <input id="message" type="text" style="width: 863px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 12px;" onkeypress="onMessageKeyPress(event)" />
-        <button id="sendMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onSendMessageClicked()">Send</button>
-    </div>
-    <div id="inputMethodContainer2" class="input-method-container" style="display: {liveChatConfig.enableVoiceChat ? "flex": "none"}">
-        <p style="width: 150px; margin-left: 14px; font-size: 24px; line-height: 28px;">Voice chat</p>
-        <button id="voice" onclick="onVoiceChatClicked()" style="width: 128px; height: 52px; margin-left: 14px; font-size: 24px; line-height: 28px;">Start</button>
-    </div>
-    <div id="inputMethodContainer3" class="input-method-container">
-        <p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using text</p>
-        <input id="ttfMessage" type="text" style="width: 543px; height: 72px; font-size: 24px; padding-inline: 10px; margin-left: 18px;" />
-        <button id="sendTtfMessage" style="width: 133px; height: 72px; font-size: 24px; line-height: 28px; margin-left: 12px;" onclick="onTtstfMessageSubmit()">Send</button>
-    </div>
-    <div id="inputMethodContainer4" class="input-method-container">
-        <p style="width: 300px; margin-left: 14px; font-size: 24px; line-height: 28px;">Make the chatbot speak using audio(Experimental)</p>
-        <input type="file" id="fileSelector" accept="audio/wav, audio/mp3" style="margin-left: 14px;" onclick="this.value=null" onchange="onStfFileChanged(event)" />
-    </div>
-    <div id="inputMethodContainer5" class="input-method-container" style="display: {liveChatConfig.enableVoiceChat ? "flex": "none"};">
-        <p style="margin-left: 14px; font-size: 24px; line-height: 28px;">Record user voice</p>
-        <button id="record" onclick="onRecordVoiceClicked()" style="width: 128px; height: 52px; margin-left: 14px; font-size: 24px; line-height: 28px;">Record</button>
-    </div>
+    <ChatState
+        enableStopSpeech={chatState == 3 ? true : false}
+        chatStateDescriptionText={chatStateDescriptionText}
+        onStopSpeechClicked={onStopSpeechClicked}
+    />
+    <ChatInput
+        enableSendButton={chatState === 0 ? true : false}
+        onMessageSubmit={onMessageSubmit}
+    />
+    {#if sessionConfig.enableVoiceChat}
+    <VoiceChat
+        enableButton={(chatState === 0 || chatState === 1) ? true : false}
+        buttonText={chatState === 1 ? 'Stop' : 'Start'}
+        onVoiceChatClicked={onVoiceChatClicked}
+    />
+    {/if}
+    <TTSTFInput
+        enableSendButton={chatState === 0 ? true : false}
+        onMessageSubmit={onTtstfMessageSubmit}
+    />
+    <STFInput
+        enableFileSelectButton={chatState === 0 ? true : false}
+        onStfFileSelected={onStfFileChanged}
+    />
     <br/>
 </div>
