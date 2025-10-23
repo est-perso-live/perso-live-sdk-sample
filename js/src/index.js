@@ -2,7 +2,6 @@ var apiServer = null;
 var apiKey = null;
 var session = null;
 var config = null;
-var recording = false;
 var screenOrientation = null;
 var chatbotLeft = 0;
 var chatbotTop = 0;
@@ -15,7 +14,6 @@ var unsubscribeChatStatus = null;
 var unsubscribeChatLog = null;
 var unsubscribeStfStartEvent = null;
 var removeSttResultCallback = null;
-var recorder = null;
 
 function onSessionClicked() {
     if (this.sessionState === 0) {
@@ -35,10 +33,8 @@ function onVoiceChatClicked() {
 
     if (canRecord()) {
         session.startVoiceChat();
-        recording = true;
     } else {
         session.stopVoiceChat();
-        recording = false;
     }
 }
 
@@ -79,16 +75,6 @@ async function onStfFileChanged(event) {
     }
 
     let file_ref = session.processSTF(file, format, "");
-}
-
-function onRecordVoiceClicked() {
-    if (canRecord()) {
-        startVoiceRecording();
-        recording = true;
-    } else {
-        stopVoiceRecording();
-        recording = false;
-    }
 }
 
 async function getConfig() {
@@ -314,28 +300,8 @@ function stopSpeech() {
     }
 }
 
-function startVoiceRecording() {
-    var recordButton = document.getElementById("record");
-    recordButton.innerText = "Stop";
-
-    recorder = new WavRecorder(session.getLocalStream()); // wav-recorder.js
-
-    recorder.start();
-}
-
-async function stopVoiceRecording() {
-    var recordButton = document.getElementById("record");
-    recordButton.innerText = "Record";
-
-    const wavFile = await recorder.stop();
-    recorder = null;
-
-    // ex. Save as an actual file
-    saveAs(wavFile, "recording.wav"); // FileSaver.js
-}
-
 function canRecord() {
-    return !recording && chatState === 0;
+    return chatState === 0;
 }
 
 function refreshChatLog(chatList) {
@@ -501,14 +467,11 @@ window.onload = async function() {
     const enableVoiceChat = document.getElementById("enableVoiceChat");
     enableVoiceChat.addEventListener("change", (e) => {
         const voiceChatContainer = document.getElementById("inputMethodContainer2");
-        const recordVoiceContainer = document.getElementById("inputMethodContainer5");
         this.enableVoiceChat = e.target.checked;
         if (this.enableVoiceChat) {
             voiceChatContainer.style.display = "flex";
-            recordVoiceContainer.style.display = "flex";
         } else {
             voiceChatContainer.style.display = "none";
-            recordVoiceContainer.style.display = "none";
         }
     });
 

@@ -1,6 +1,10 @@
 import {
     persoLiveApiServerUrl,
-    persoLiveApiKey
+    persoLiveApiKey,
+    useIntroMessage,
+    chatbotWidth,
+    chatbotHeight,
+    enableVoiceChat
 } from '$lib/constant';
 import { error } from '@sveltejs/kit';
 import { config } from '../../hooks.server'
@@ -61,7 +65,16 @@ export async function GET() {
     )
 
     return new Response(
-        JSON.stringify({ sessionId }),
+        JSON.stringify(
+            {
+                persoLiveApiServerUrl: persoLiveApiServerUrl,
+                sessionId: sessionId,
+                useIntroMessage: useIntroMessage,
+                chatbotWidth: chatbotWidth,
+                chatbotHeight: chatbotHeight,
+                enableVoiceChat: enableVoiceChat
+            }
+        ),
         {
             headers: { 'Content-Type': 'application/json' }
         }

@@ -60,3 +60,9 @@ button:not(:disabled):active {
 button:focus {
 	border-color: #666;
 }
+
+.border1px {
+	border: 1px;
+	border-color: black;
+	border-style: solid;
+}
